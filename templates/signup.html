@@ -1,0 +1,27 @@
+
+{{define "body"}}
+<section class="ftco-section pb-0">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12 heading-title">
+                    <h1>Sign Up</h1>
+                    <form method="POST">
+                        <label>Username:</label><br />
+                        <input type="text" name="username" required><br />
+                        <label>Email (optional):</label><br />
+                        <input type="text" name="email"><br />
+                        <label>Password:</label><br />
+                        <input type="password" name="password" required><br />
+                        <label>Twitter (optional):</label><br />
+                        <input type="text" name="twitter"><br />
+                        <label>Satoshis/Message (1000 default):</label><br />
+                        <input type="number" name="fee_rate"><br />
+                        <label>PGP Key (optional):</label><br />
+                        <textarea name="pgpkey"></textarea><br />
+                        <input type="submit">
+                    </form>
+          </div>
+        </div>
+    </div>
+</section>
+{{end}}

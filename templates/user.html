@@ -1,0 +1,30 @@
+
+{{define "body"}}
+<section class="ftco-section pb-0">
+        <div class="container" style="align-content:center">
+            <div class="row">
+                <div class="col-md-12 heading-title">
+                    <div class="col-md-3 text-center">
+                        <h2 class="heading-section mb-4">
+                            <small>{{.username}}</small>
+                        </h2>
+                        <img src="static/images/avatar.jpg" alt="Circle Image" class="rounded-circle img-fluid image">
+                        <div><i class="ion-ios-pricetag mr-2"></i><b>{{.fee}}</b> sats/message</div>
+                        <div><i class="ion-ios-twitter mr-2"></i>Twitter: {{.twitter}}</div>
+                        <div><i class="ion-ios-twitter mr-2"></i>PGP Key: {{.pgp_key}}</div>
+                    </div>
+
+
+                    <form method="POST" action="/posts">
+                        <input type="hidden" name="to" value="{{.username}}" required><br />
+                        <label>From (optional):</label><br />
+                        <input type="text" name="from"><br />
+                        <label>Message:</label><br />
+                        <input type="text" name="message" required><br />
+                        <input type="submit">
+                    </form>
+          </div>
+        </div>
+    </div>
+</section>
+{{end}}

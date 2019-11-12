@@ -1,0 +1,51 @@
+
+{{define "body"}}
+<section class="ftco-section" id="images">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12">
+                    <h2 class="heading-section mb-4">Featured Users</h2>
+                    <div class="row">
+                        <div class="col-md-3 text-center">
+                            <h2 class="heading-section mb-4">
+                                <a href="/{{ .username0}}">
+                                    <small>{{index . "username0"}}</small>
+                                </a>
+                            </h2>
+                            <img src="static/images/avatar.jpg" alt="Circle Image" class="rounded-circle img-fluid image">
+                            <div><i class="ion-ios-pricetag mr-2"></i><b>{{index . "fee0"}}</b> sats/message</div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <h2 class="heading-section mb-4">
+                                <a href="/{{ .username1}}">
+                                    <small>{{index . "username1"}}</small>
+                                </a>
+                            </h2>
+                            <img src="static/images/avatar.jpg" alt="Circle Image" class="rounded-circle img-fluid image">
+                            <div><i class="ion-ios-pricetag mr-2"></i><b>{{index . "fee1"}}</b> sats/message</div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <h2 class="heading-section mb-4">
+                                <a href="/{{ .username2}}">
+                                    <small>{{index . "username2"}}</small>
+                                </a>
+                            </h2>
+                            <img src="static/images/avatar.jpg" alt="Circle Image" class="rounded-circle img-fluid image">
+                            <div><i class="ion-ios-pricetag mr-2"></i><b>{{index . "fee2"}}</b> sats/message</div>
+                        </div>
+
+                        <div class="col-md-3 text-center">
+                            <h2 class="heading-section mb-4">
+                                <a href="/{{ .username3}}">
+                                    <small>{{index . "username3"}}</small>
+                                </a>
+                            </h2>
+                            <img src="static/images/avatar.jpg" alt="Circle Image" class="rounded-circle img-fluid image">
+                            <div><i class="ion-ios-pricetag mr-2"></i><b>{{index . "fee3"}}</b> sats/message</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+  </section>
+{{end}}
