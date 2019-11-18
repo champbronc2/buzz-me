@@ -91,6 +91,11 @@ type InvoiceRequest struct {
 	amt_paid_sat     string
 }
 
+type InvoiceResponse struct {
+	RHash          string `json:'r_hash'`
+	PaymentRequest string `json:'payment_request'`
+}
+
 func CreateInvoice(amount string) (string, error) {
 	newInvoiceRequest := InvoiceRequest{
 		value: amount,

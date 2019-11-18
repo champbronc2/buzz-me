@@ -1,0 +1,25 @@
+
+{{define "body"}}
+<section class="ftco-section pb-0">
+        <div class="container" style="align-content:center">
+            <div class="row">
+                <div class="col-md-12 heading-title">
+                    <div class="col-md-3 text-center">
+                        <div>ID: {{.id}}</div>
+                        <div>From: {{.from}}</div>
+                        <div>To: {{.to}}</div>
+                        <div>Payment Request: {{.paymentRequest}}</div>
+                        <div>Message: {{.message}}</div>
+                        <div>Paid: {{.paid}}</div>
+                    </div>
+
+
+                    <form method="POST" action="/post">
+                        <input type="hidden" name="to" value="{{.payment_request}}" required><br />
+                        <input type="submit" value="Mark Paid">
+                    </form>
+          </div>
+        </div>
+    </div>
+</section>
+{{end}}

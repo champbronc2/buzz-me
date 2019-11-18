@@ -7,6 +7,7 @@ import (
 	"github.com/champbronc2/buzz-me/model"
 	"github.com/labstack/echo"
 	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type (
@@ -44,15 +45,21 @@ func (h *Handler) Index(c echo.Context) (err error) {
 	}
 	defer db.Close()
 
-	return c.Render(http.StatusOK, "index.html", map[string]interface{}{
-		"username0": users[0].Username,
-		"username1": users[1].Username,
-		"username2": users[2].Username,
-		"username3": users[3].Username,
+	// Retrieve 10 recent posts
+	posts := []*model.Post{}
+	db = h.DB.Clone()
+	if err = db.DB("buzzme").C("posts").
+		Find(bson.D{{"public", "on"}, {"paid", true}}).
+		Skip((page - 1) * 10).
+		Sort("-$natural").
+		Limit(10).
+		All(&posts); err != nil {
+		return
+	}
+	defer db.Close()
 
-		"fee0": users[0].FeeRate,
-		"fee1": users[1].FeeRate,
-		"fee2": users[2].FeeRate,
-		"fee3": users[3].FeeRate,
+	return c.Render(http.StatusOK, "index.html", map[string]interface{}{
+		"users": users,
+		"posts": posts,
 	})
 }

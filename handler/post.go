@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -17,6 +18,7 @@ func (h *Handler) CreatePost(c echo.Context) (err error) {
 	p := &model.Post{
 		ID:   bson.NewObjectId(),
 		Paid: false,
+		Read: false,
 	}
 	if err = c.Bind(p); err != nil {
 		return
@@ -39,25 +41,35 @@ func (h *Handler) CreatePost(c echo.Context) (err error) {
 		return
 	}
 
-	invoice, err := lightning.CreateInvoice(u.FeeRate)
+	/*invoice, err := lightning.CreateInvoice(u.FeeRate)
 	if err != nil {
 		return err
 	}
 
-	p.Invoice = invoice
+	p.Invoice = invoice*/
+	p.Invoice = "{\"r_hash\":\"rGZUpNuwPGdysrfIEf7iso4PlrJHDUlIRCNsyDDO1E0=\",\"payment_request\":\"lntb1pwukphgpp543n9ffxmkq7xwu4jklyprlhzk28ql94jgux5jjzyydkvsvxw63xsdqqcqzpgraqptwft5jhckznertz77nu0zh4vd9afgwlyr352z4u8gty73mk88qruxk5nt6a33pn6l2prvgp9mq503kz5rjluh9afkzyw747vztcqd7t9qp\",\"add_index\":\"1\"}"
+	p.Sats = u.FeeRate
+
+	invoice := lightning.InvoiceResponse{}
+	json.Unmarshal([]byte(p.Invoice), &invoice)
 
 	// Save post in database
 	if err = db.DB("buzzme").C("posts").Insert(p); err != nil {
 		return
 	}
 
-	log.Println(invoice)
-
-	return c.JSON(http.StatusCreated, p)
+	return c.Render(http.StatusCreated, "post.html", map[string]interface{}{
+		"id":             p.ID,
+		"from":           p.From,
+		"to":             p.To,
+		"paymentRequest": invoice.PaymentRequest,
+		"message":        p.Message,
+		"paid":           p.Paid,
+	})
 }
 
 func (h *Handler) FetchPost(c echo.Context) (err error) {
-	userID := userIDFromToken(c)
+	id := bson.ObjectIdHex(c.Param("id"))
 	page, _ := strconv.Atoi(c.QueryParam("page"))
 	limit, _ := strconv.Atoi(c.QueryParam("limit"))
 
@@ -69,11 +81,11 @@ func (h *Handler) FetchPost(c echo.Context) (err error) {
 		limit = 100
 	}
 
-	// Retrieve posts from database
+	// Retrieve user from database
 	posts := []*model.Post{}
 	db := h.DB.Clone()
 	if err = db.DB("buzzme").C("posts").
-		Find(bson.M{"to": userID}).
+		Find(bson.M{"_id": id}).
 		Skip((page - 1) * limit).
 		Limit(limit).
 		All(&posts); err != nil {
@@ -81,5 +93,17 @@ func (h *Handler) FetchPost(c echo.Context) (err error) {
 	}
 	defer db.Close()
 
-	return c.JSON(http.StatusOK, posts)
+	p := posts[0]
+
+	invoice := lightning.InvoiceResponse{}
+	json.Unmarshal([]byte(p.Invoice), &invoice)
+
+	return c.Render(http.StatusCreated, "post.html", map[string]interface{}{
+		"id":             p.ID,
+		"from":           p.From,
+		"to":             p.To,
+		"paymentRequest": invoice.PaymentRequest,
+		"message":        p.Message,
+		"paid":           p.Paid,
+	})
 }
