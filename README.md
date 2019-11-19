@@ -13,6 +13,8 @@ To run locally, you'll need to perform the following:
 
 A live version running on BTC mainnet can be found at http://ec2-18-237-219-223.us-west-2.compute.amazonaws.com:1323/ - Sign up, post, play!
 
+Your profile will be visible at http://ec2-18-237-219-223.us-west-2.compute.amazonaws.com:1323/{username}
+
 Completed functionality:
 - Registartion
 - Login
