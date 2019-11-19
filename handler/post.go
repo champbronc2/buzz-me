@@ -18,7 +18,7 @@ func (h *Handler) CreatePost(c echo.Context) (err error) {
 	p := &model.Post{
 		ID:   bson.NewObjectId(),
 		Paid: false,
-		Read: false,
+		Read: true,
 	}
 	if err = c.Bind(p); err != nil {
 		return
@@ -28,8 +28,6 @@ func (h *Handler) CreatePost(c echo.Context) (err error) {
 	if p.To == "" || p.Message == "" {
 		return &echo.HTTPError{Code: http.StatusBadRequest, Message: "invalid to or message fields"}
 	}
-
-	log.Println(p.To)
 
 	// Find user from database
 	db := h.DB.Clone()
@@ -41,31 +39,21 @@ func (h *Handler) CreatePost(c echo.Context) (err error) {
 		return
 	}
 
-	/*invoice, err := lightning.CreateInvoice(u.FeeRate)
+	// Generate invoice
+	invoice, err := lightning.CreateInvoice(strconv.Itoa(u.FeeRate))
 	if err != nil {
 		return err
 	}
-
-	p.Invoice = invoice*/
-	p.Invoice = "{\"r_hash\":\"rGZUpNuwPGdysrfIEf7iso4PlrJHDUlIRCNsyDDO1E0=\",\"payment_request\":\"lntb1pwukphgpp543n9ffxmkq7xwu4jklyprlhzk28ql94jgux5jjzyydkvsvxw63xsdqqcqzpgraqptwft5jhckznertz77nu0zh4vd9afgwlyr352z4u8gty73mk88qruxk5nt6a33pn6l2prvgp9mq503kz5rjluh9afkzyw747vztcqd7t9qp\",\"add_index\":\"1\"}"
+	p.Invoice = invoice
+	// p.Invoice = "{\"r_hash\":\"rGZUpNuwPGdysrfIEf7iso4PlrJHDUlIRCNsyDDO1E0=\",\"payment_request\":\"lntb1pwukphgpp543n9ffxmkq7xwu4jklyprlhzk28ql94jgux5jjzyydkvsvxw63xsdqqcqzpgraqptwft5jhckznertz77nu0zh4vd9afgwlyr352z4u8gty73mk88qruxk5nt6a33pn6l2prvgp9mq503kz5rjluh9afkzyw747vztcqd7t9qp\",\"add_index\":\"1\"}"
 	p.Sats = u.FeeRate
-
-	invoice := lightning.InvoiceResponse{}
-	json.Unmarshal([]byte(p.Invoice), &invoice)
 
 	// Save post in database
 	if err = db.DB("buzzme").C("posts").Insert(p); err != nil {
 		return
 	}
 
-	return c.Render(http.StatusCreated, "post.html", map[string]interface{}{
-		"id":             p.ID,
-		"from":           p.From,
-		"to":             p.To,
-		"paymentRequest": invoice.PaymentRequest,
-		"message":        p.Message,
-		"paid":           p.Paid,
-	})
+	return c.Redirect(http.StatusMovedPermanently, "/post/"+p.ID.Hex())
 }
 
 func (h *Handler) FetchPost(c echo.Context) (err error) {
@@ -81,7 +69,7 @@ func (h *Handler) FetchPost(c echo.Context) (err error) {
 		limit = 100
 	}
 
-	// Retrieve user from database
+	// Retrieve post from database
 	posts := []*model.Post{}
 	db := h.DB.Clone()
 	if err = db.DB("buzzme").C("posts").
@@ -99,11 +87,68 @@ func (h *Handler) FetchPost(c echo.Context) (err error) {
 	json.Unmarshal([]byte(p.Invoice), &invoice)
 
 	return c.Render(http.StatusCreated, "post.html", map[string]interface{}{
-		"id":             p.ID,
+		"id":             p.ID.Hex(),
 		"from":           p.From,
 		"to":             p.To,
 		"paymentRequest": invoice.PaymentRequest,
 		"message":        p.Message,
 		"paid":           p.Paid,
 	})
+}
+
+func (h *Handler) CheckPost(c echo.Context) (err error) {
+	// Defaults
+	var (
+		page  = 1
+		limit = 100
+	)
+
+	p := &model.Post{}
+	if err = c.Bind(p); err != nil {
+		return
+	}
+
+	// Validation
+	if p.To == "" {
+		return &echo.HTTPError{Code: http.StatusBadRequest, Message: "invalid post"}
+	}
+
+	// Retrieve post from database
+	posts := []*model.Post{}
+	db := h.DB.Clone()
+	if err = db.DB("buzzme").C("posts").
+		Find(bson.M{"_id": bson.ObjectIdHex(p.To)}).
+		Skip((page - 1) * limit).
+		Limit(limit).
+		All(&posts); err != nil {
+		return
+	}
+	defer db.Close()
+
+	p = posts[0]
+
+	invoice := lightning.InvoiceResponse{}
+	json.Unmarshal([]byte(p.Invoice), &invoice)
+
+	invoicePaid, err := lightning.GetInvoicePaid(invoice)
+	if err != nil {
+		return &echo.HTTPError{Code: http.StatusBadRequest, Message: "failed to get invoice"}
+	}
+	if invoicePaid {
+		p.Paid = true
+		log.Println("paid!")
+		// Update database paid status
+		// Find user from database
+		db := h.DB.Clone()
+		defer db.Close()
+		if err = db.DB("buzzme").C("posts").UpdateId(p.ID, p); err != nil {
+			if err == mgo.ErrNotFound {
+				return echo.ErrNotFound
+			}
+			return
+		}
+
+	}
+
+	return c.Redirect(http.StatusMovedPermanently, "/post/"+p.ID.Hex())
 }

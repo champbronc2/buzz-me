@@ -83,6 +83,7 @@ func main() {
 
 	e.PUT("/dashboard", h.UpdateUser)
 
+	e.POST("/post", h.CheckPost)
 	e.POST("/signup", h.Signup)
 	e.POST("/login", h.Login)
 	e.POST("/posts", h.CreatePost)

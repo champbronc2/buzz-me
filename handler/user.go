@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/champbronc2/buzz-me/lightning"
 	"github.com/champbronc2/buzz-me/model"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo"
@@ -35,7 +36,32 @@ func (h *Handler) Signup(c echo.Context) (err error) {
 		return
 	}
 
-	return c.JSON(http.StatusCreated, u)
+	// Create token
+	token := jwt.New(jwt.SigningMethodHS256)
+	expTime := time.Now().Add(time.Hour * 72)
+
+	// Set claims
+	claims := token.Claims.(jwt.MapClaims)
+	claims["id"] = u.ID
+	claims["username"] = u.Username
+	claims["exp"] = expTime.Unix()
+
+	// Generate encoded token and send it as response
+	u.Token, err = token.SignedString([]byte(Key))
+	if err != nil {
+		return err
+	}
+
+	u.Password = "" // Don't send password
+	u.ID = ""       // Don't send ID
+
+	http.SetCookie(c.Response().Writer, &http.Cookie{
+		Name:    "Authorization",
+		Value:   u.Token,
+		Expires: expTime,
+	})
+
+	return c.Redirect(http.StatusMovedPermanently, "/dashboard")
 }
 
 func (h *Handler) ViewSignup(c echo.Context) (err error) {
@@ -89,7 +115,7 @@ func (h *Handler) Login(c echo.Context) (err error) {
 		Expires: expTime,
 	})
 
-	return c.JSON(http.StatusOK, u)
+	return c.Redirect(http.StatusMovedPermanently, "/dashboard")
 }
 
 func (h *Handler) ViewLogin(c echo.Context) (err error) {
@@ -149,11 +175,7 @@ func (h *Handler) FetchUser(c echo.Context) (err error) {
 	defer db.Close()
 
 	return c.Render(http.StatusOK, "user.html", map[string]interface{}{
-		"username": users[0].Username,
-		"fee":      users[0].FeeRate,
-		"Avatar":   users[0].Avatar,
-		"twitter":  users[0].Twitter,
-		"pgp_key":  users[0].PgpKey,
+		"user": users[0],
 	})
 }
 
@@ -233,33 +255,49 @@ func (h *Handler) Dashboard(c echo.Context) (err error) {
 
 func (h *Handler) UpdateUser(c echo.Context) (err error) {
 	// Bind
-	u := &model.User{ID: bson.NewObjectId()}
-	if err = c.Bind(u); err != nil {
+	username := usernameFromToken(c)
+	update := &model.UpdateUser{}
+	if err = c.Bind(update); err != nil {
 		return
 	}
 
-	// Validate
-	if u.Username == "" || u.Password == "" {
-		return &echo.HTTPError{Code: http.StatusBadRequest, Message: "invalid username, email or password"}
+	// Find user
+	u := &model.User{}
+	db := h.DB.Clone()
+	defer db.Close()
+	if err = db.DB("buzzme").C("users").
+		Find(bson.M{"username": username}).One(u); err != nil {
+		if err == mgo.ErrNotFound {
+			return &echo.HTTPError{Code: http.StatusUnauthorized, Message: "invalid token"}
+		}
+		return
 	}
-	if u.FeeRate == 0 {
-		// 1000 sats/message default
-		u.FeeRate = 1000
+
+	if update.FeeRate != 0 {
+		u.FeeRate = update.FeeRate
+	}
+	if update.Avatar != "" {
+		u.Avatar = update.Avatar
+	}
+	if update.PgpKey != "" {
+		u.PgpKey = update.PgpKey
+	}
+	if update.Twitter != "" {
+		u.Twitter = update.Twitter
 	}
 
 	// Save user
-	db := h.DB.Clone()
+	db = h.DB.Clone()
 	defer db.Close()
-	if err = db.DB("buzzme").C("users").Insert(u); err != nil {
+	if err = db.DB("buzzme").C("users").Update(bson.M{"username": username}, u); err != nil {
 		return
 	}
 
-	return c.JSON(http.StatusCreated, u)
+	return c.Redirect(http.StatusMovedPermanently, "/dashboard")
 }
 
 func (h *Handler) CreateWithdrawal(c echo.Context) (err error) {
 	username := usernameFromToken(c)
-	u := new(model.User)
 	page, _ := strconv.Atoi(c.QueryParam("page"))
 	limit, _ := strconv.Atoi(c.QueryParam("limit"))
 
@@ -275,7 +313,6 @@ func (h *Handler) CreateWithdrawal(c echo.Context) (err error) {
 	w := &model.Withdrawal{
 		Username: username,
 		ID:       bson.NewObjectId(),
-		Sats:     1000,
 		Paid:     false,
 	}
 	if err = c.Bind(w); err != nil {
@@ -283,6 +320,10 @@ func (h *Handler) CreateWithdrawal(c echo.Context) (err error) {
 	}
 
 	// Validate Lightning Invoice and extract sats
+	validInvoice := lightning.GetPaymentRequestValid(w.Invoice)
+	if !validInvoice {
+		return &echo.HTTPError{Code: http.StatusBadRequest, Message: "invalid invoice"}
+	}
 
 	// Retrieve posts from database
 	posts := []*model.Post{}
@@ -351,23 +392,7 @@ func (h *Handler) CreateWithdrawal(c echo.Context) (err error) {
 	}
 	defer db.Close()
 
-	// Find user
-	db = h.DB.Clone()
-	defer db.Close()
-	if err = db.DB("buzzme").C("users").
-		Find(bson.M{"username": username}).One(u); err != nil {
-		if err == mgo.ErrNotFound {
-			return &echo.HTTPError{Code: http.StatusUnauthorized, Message: "invalid token"}
-		}
-		return
-	}
-
-	return c.Render(http.StatusOK, "dashboard.html", map[string]interface{}{
-		"user":        u,
-		"posts":       posts,
-		"balance":     balance,
-		"withdrawals": withdrawals,
-	})
+	return c.Redirect(http.StatusMovedPermanently, "/dashboard")
 }
 
 func usernameFromToken(c echo.Context) string {

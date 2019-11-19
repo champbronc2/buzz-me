@@ -19,6 +19,13 @@ type (
 		Followers []string `json:"followers,omitempty" bson:"followers,omitempty"`
 	}
 
+	UpdateUser struct {
+		FeeRate int    `json:"fee_rate" form:"fee_rate" bson:"fee_rate"`
+		Avatar  string `json:"avatar, omitempty" form:"avatar" bson:"avatar"`
+		PgpKey  string `json:"pgpkey, omitempty" form:"pgpkey" bson:"pgpkey"`
+		Twitter string `json:"twitter, omitempty" form:"twitter" bson:"twitter"`
+	}
+
 	PublicUser struct {
 		Username string `json:"username" bson:"username"`
 		FeeRate  int    `json:"fee_rate" bson:"fee_rate"`

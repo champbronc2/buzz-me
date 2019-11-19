@@ -18,7 +18,7 @@
                             <table style = "width: 100%">
                                     <tbody>
                                     <tr>
-                                            <td><h5>Update Profile</h5></td>
+                                            <td><h5>Update Profile (coming soon)</h5></td>
                                             <td style="align-content: right"><h5>Request Withdrawal</h5></td>
                                     </tr>
                                     <tr>
@@ -43,6 +43,8 @@
                                     <td style="vertical-align:top">
                                         Available balance: <b>{{.balance}}</b> satoshis<br><br><br>
                                         <form method="POST">
+                                            <label>Amount (satoshis):</label><br />
+                                            <textarea name="sats" required></textarea><br />
                                             <label>Lightning Invoice:</label><br />
                                             <textarea name="invoice" required></textarea><br />
                                             <input type="submit">
@@ -70,14 +72,12 @@
                             <td><b>From</b></td>
                             <td><b>Message</b></td>
                             <td><b>Sats Paid</b></td>
-                            <td><b>Read</b></td>
                             </tr>
                             {{range .posts}}
                             <tr>
                             <td>{{if .From}} {{.From}} {{else}} Anonymous {{end}}</td>
                             <td>{{.Message}}</td>
                             <td>{{if .Sats}} {{.Sats}} {{else}} 1000 {{end}}</td>
-                            <td>{{.Read}}</td>
                             </tr>
                             {{end}}
                             </tbody>
@@ -91,7 +91,7 @@
         <div class="container">
             <div class="row">
                 <div class="col-md-12">
-                    <h2 class="heading-section mb-4">Withdrawls</h2>
+                    <h2 class="heading-section mb-4">Withdrawals</h2>
                     <table border="1" style = "width: 100%">
                             <tbody>
                             <tr>

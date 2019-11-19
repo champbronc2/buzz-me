@@ -2,7 +2,6 @@ package handler
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/champbronc2/buzz-me/model"
 	"github.com/labstack/echo"
@@ -22,18 +21,12 @@ const (
 )
 
 func (h *Handler) Index(c echo.Context) (err error) {
-	page, _ := strconv.Atoi(c.QueryParam("page"))
-	limit, _ := strconv.Atoi(c.QueryParam("limit"))
-
-	// Defaults
-	if page == 0 {
-		page = 1
-	}
-	if limit == 0 {
+	var (
+		page  = 1
 		limit = 4
-	}
+	)
 
-	// Retrieve users from database
+	// Retrieve featured (first 4) users from database
 	users := []*model.PublicUser{}
 	db := h.DB.Clone()
 	if err = db.DB("buzzme").C("users").

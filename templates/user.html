@@ -16,7 +16,7 @@
 
 
                     <form method="POST" action="/posts">
-                        <input type="hidden" name="to" value="{{.username}}" required><br />
+                        <input type="hidden" name="to" value="{{.user.Username}}" required><br />
                         <label>From (optional):</label><br />
                         <input type="text" name="from"><br />
                         <label>Message:</label><br />

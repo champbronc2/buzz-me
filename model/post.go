@@ -15,5 +15,10 @@ type (
 		Paid    bool          `json:"paid" bson:"paid"`
 		Read    bool          `json:"read" bson:"read"`
 		Public  string        `json:"public" bson:"public"`
+
+		// LN fields
+		RHash          byte   `json:"r_hash"`
+		PaymentRequest string `json:"payment_request"`
+		AddIndex       string `json:"add_index"`
 	}
 )

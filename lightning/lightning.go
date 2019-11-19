@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type AddressResponse struct {
@@ -42,7 +43,7 @@ func sendGetRequest(endpoint string) (*http.Response, error) {
 	return resp, err
 }
 
-func sendPostRequest(endpoint string, payload interface{}) (*http.Response, error) {
+func sendPostRequest(endpoint string, payload string) (*http.Response, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
@@ -51,17 +52,23 @@ func sendPostRequest(endpoint string, payload interface{}) (*http.Response, erro
 		Transport: tr,
 	}
 
-	p, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
+	log.Println(payload)
 
-	req, err := http.NewRequest("POST", LNUrl+endpoint, bytes.NewBuffer(p))
+	/*params := bytes.NewBuffer(nil)
+	if payload != nil {
+		if err := json.NewEncoder(params).Encode(payload); err != nil {
+			return nil, err
+		}
+	}*/
+	var jsonStr = []byte(payload)
+
+	req, err := http.NewRequest("POST", LNUrl+endpoint, bytes.NewBuffer(jsonStr))
 	if err != nil {
 		return nil, err
 	}
 
 	req.Header.Add("Grpc-Metadata-macaroon", Macaroon)
+	req.Header.Add("Content-Type", "application/json")
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -75,11 +82,11 @@ type InvoiceRequest struct {
 	add_index        string
 	creation_date    string
 	private          bool
-	value            string
+	value            string `json:"value"`
 	expiry           string
 	fallback_addr    string
 	r_hash           byte
-	memo             string
+	memo             string `json:"memo"`
 	receipt          byte
 	amt_paid_msat    string
 	payment_request  string
@@ -92,16 +99,19 @@ type InvoiceRequest struct {
 }
 
 type InvoiceResponse struct {
-	RHash          string `json:'r_hash'`
-	PaymentRequest string `json:'payment_request'`
+	RHash          byte   `json:"r_hash"`
+	PaymentRequest string `json:"payment_request"`
+	AddIndex       string `json:"add_index"`
+}
+
+type InvoiceListResponse struct {
+	Invoices []InvoiceResponse `json:"invoices"`
 }
 
 func CreateInvoice(amount string) (string, error) {
-	newInvoiceRequest := InvoiceRequest{
-		value: amount,
-	}
+	log.Println(amount)
 
-	resp, err := sendPostRequest("invoices", newInvoiceRequest)
+	resp, err := sendPostRequest("invoices", `{"value":"`+amount+`","memo":"`+amount+`"}`)
 
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -110,7 +120,73 @@ func CreateInvoice(amount string) (string, error) {
 
 	bodyString := string(bodyBytes)
 
-	log.Println(bodyString)
-
 	return bodyString, err
+}
+
+func GetInvoicePaid(invoice InvoiceResponse) (bool, error) {
+	var (
+		invoiceValid   = false
+		invoicePending = false
+		invoicePaid    = false
+	)
+
+	// First see if invoice exists
+	resp, err := sendGetRequest("invoices")
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+	validInvoices := InvoiceListResponse{}
+	json.Unmarshal(bodyBytes, &validInvoices)
+
+	for _, validInvoice := range validInvoices.Invoices {
+		if validInvoice.PaymentRequest == invoice.PaymentRequest {
+			invoiceValid = true
+			break
+		}
+	}
+
+	resp, err = sendGetRequest("invoices?pending_only=true")
+	bodyBytes, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false, err
+	}
+	pendingInvoices := InvoiceListResponse{}
+	json.Unmarshal(bodyBytes, &pendingInvoices)
+
+	for _, pendingInvoice := range pendingInvoices.Invoices {
+		if pendingInvoice.PaymentRequest == invoice.PaymentRequest {
+			invoicePending = true
+			break
+		}
+	}
+
+	if invoiceValid && !invoicePending {
+		invoicePaid = true
+	}
+
+	//TESTING
+	invoicePaid = true
+
+	return invoicePaid, err
+}
+
+func GetPaymentRequestValid(paymentRequest string) bool {
+	// First see if invoice exists
+	resp, err := sendGetRequest("payreq/" + paymentRequest)
+	if err != nil {
+		return false
+	}
+	bodyBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return false
+	}
+
+	bodyString := string(bodyBytes)
+
+	if strings.Contains(bodyString, "err") {
+		return false
+	}
+
+	return true
 }
